@@ -1,24 +1,31 @@
-from sqlalchemy import Column, String, BigInteger
+from sqlalchemy import Column, String, BigInteger, Integer
 from db.database import Base
 from dataclasses import dataclass
 from datetime import datetime
 
-# This is a test DB table example
+
 @dataclass
 class User(Base):
     __tablename__ = 'users'
 
     id: int
-    email: str
-    firstName: str
-    lastName: str
+    username: str
+    password: str
+    country: str
+    taste_salty: int
+    taste_spicy: int
+    taste_sour: int
+    taste_sweet: int
 
     id = Column(BigInteger, primary_key = True, autoincrement=True)
-    email = Column(String(100))
-    firstName = Column(String(50))
-    lastName = Column(String(50))
+    username = Column(String(100), nullable=False)
+    password = Column(String(50), nullable=False)
+    country = Column(String(50))
+    taste_salty = Column(Integer, default=0)
+    taste_spicy = Column(Integer, default=0)
+    taste_sour = Column(Integer, default=0)
+    taste_sweet = Column(Integer, default=0)
 
-    def __init__(self, email, firstName, lastName):
-        self.email = email
-        self.firstName = firstName
-        self.lastName = lastName
+    def __init__(self, username, password):
+        self.username = username
+        self.password = password
