@@ -36,3 +36,21 @@ class UserResponseSchema(Schema):
             'sour': user.taste_sour,
             'sweet': user.taste_sweet
         }
+
+class RatingSchema(Schema):
+    """Request schema for rating."""
+
+    userId = fields.String()
+    googlePlaceId = fields.String()
+    rating = fields.Integer()
+
+class RatingResponseSchema(Schema):
+    """Response schema for rating."""
+
+    class Meta:
+        ordered = True
+
+    id = fields.Integer(dump_only=True)
+    user_id = fields.String()
+    google_place_id = fields.String()
+    rating = fields.String()

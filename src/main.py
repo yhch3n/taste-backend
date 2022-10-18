@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, abort
 from db.database import db_session, init_db
-from db.models import User
-from schemas import UserSchema, UserResponseSchema
+from db.models import User, Rating
+from schemas import UserSchema, UserResponseSchema, RatingSchema, RatingResponseSchema
 from http import HTTPStatus
 
 
@@ -24,8 +24,8 @@ def users():
             user_req = UserSchema().load(request.get_json())
             try:
                 if user_req['username'] is None or user_req['username'] == '' or \
-                user_req['password'] is None or user_req['password'] == '':
-                    return jsonify(HTTPStatus.BAD_REQUEST.phrase), HTTPStatus.BAD_REQUEST
+                   user_req['password'] is None or user_req['password'] == '':
+                   return jsonify(HTTPStatus.BAD_REQUEST.phrase), HTTPStatus.BAD_REQUEST
             except KeyError:
                 return jsonify(HTTPStatus.UNPROCESSABLE_ENTITY.phrase), HTTPStatus.UNPROCESSABLE_ENTITY
 
@@ -45,6 +45,27 @@ def users():
         except Exception as e:
             abort(400, e)
     return jsonify(UserResponseSchema(many=True).dump(User.query.all())), HTTPStatus.OK
+
+@app.route('/ratings', methods = ['GET', 'POST'])
+def ratings():
+    if request.method == 'POST':
+        try:
+            rating_req = RatingSchema().load(request.get_json())
+            try:
+                if rating_req['userId'] is None or rating_req['userId'] == '' or \
+                   rating_req['googlePlaceId'] is None or rating_req['googlePlaceId'] == '' or \
+                   rating_req['rating'] is None or rating_req['rating'] == '':
+                   return jsonify(HTTPStatus.BAD_REQUEST.phrase), HTTPStatus.BAD_REQUEST
+            except KeyError:
+                return jsonify(HTTPStatus.UNPROCESSABLE_ENTITY.phrase), HTTPStatus.UNPROCESSABLE_ENTITY
+
+            rating = Rating(int(rating_req['userId']), rating_req['googlePlaceId'], float(rating_req['rating']))
+            db_session.add(rating)
+            db_session.commit()
+            return jsonify(RatingResponseSchema().dump(rating)), HTTPStatus.CREATED
+        except Exception as e:
+            abort(400, e)
+    return jsonify(RatingResponseSchema(many=True).dump(Rating.query.all())), HTTPStatus.OK
 
 if __name__ == '__main__':
     app.run(debug=True)

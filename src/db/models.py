@@ -1,7 +1,6 @@
-from sqlalchemy import Column, String, BigInteger, Integer
+from sqlalchemy import ForeignKey, Column, String, BigInteger, Integer, Float
 from db.database import Base
 from dataclasses import dataclass
-from datetime import datetime
 
 
 @dataclass
@@ -29,3 +28,22 @@ class User(Base):
     def __init__(self, username, password):
         self.username = username
         self.password = password
+
+@dataclass
+class Rating(Base):
+    __tablename__ = 'ratings'
+
+    id: int
+    user_id: int
+    google_place_id: str
+    rating: float
+
+    id = Column(BigInteger, primary_key = True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+    google_place_id = Column(String(500), nullable=False)
+    rating = Column(Float(precision=1), nullable=False)
+
+    def __init__(self, user_id, google_place_id, rating):
+        self.user_id = user_id
+        self.google_place_id = google_place_id
+        self.rating = rating
