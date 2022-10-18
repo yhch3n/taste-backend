@@ -1,8 +1,10 @@
 from flask import Flask, jsonify, request, abort
 from db.database import db_session, init_db
 from db.models import User, Rating
-from schemas import UserSchema, UserResponseSchema, RatingSchema, RatingResponseSchema
+from schemas import UserSchema, UserResponseSchema, RatingSchema, RatingResponseSchema, RatingPrefSchema, RatingPrefResponseSchema
 from http import HTTPStatus
+import sqlalchemy
+import json, random
 
 
 init_db()
@@ -66,6 +68,72 @@ def ratings():
         except Exception as e:
             abort(400, e)
     return jsonify(RatingResponseSchema(many=True).dump(Rating.query.all())), HTTPStatus.OK
+
+@app.route('/ratings/pref', methods = ['POST'])
+def ratings_pref():
+    try:
+        req = RatingPrefSchema().load(request.get_json())
+        try:
+            if req['googlePlaceIds'] is None or req['googlePlaceIds'] == '':
+                return jsonify(HTTPStatus.BAD_REQUEST.phrase), HTTPStatus.BAD_REQUEST
+        except KeyError:
+            return jsonify(HTTPStatus.UNPROCESSABLE_ENTITY.phrase), HTTPStatus.UNPROCESSABLE_ENTITY
+
+        google_place_ids = req['googlePlaceIds']
+        filter_taste_pref = ''
+        filter_country = ''
+        if 'tastePref' in req and req['tastePref'] is not None and req['tastePref'] != '':
+            filter_taste_pref = f"( users.taste_salty >= {req['tastePref']['salty']} \
+                AND users.taste_spicy >= {req['tastePref']['spicy']} \
+                AND users.taste_sour >= {req['tastePref']['sour']} \
+                AND users.taste_sweet >= {req['tastePref']['sweet']} ) "
+
+        if 'country' in req and req['country'] is not None and req['country'] != '':
+            filter_country = f"( users.country = '{req['country']}' )"
+
+        filter = ''
+        if filter_taste_pref != '' and filter_country != '':
+            filter = 'AND (' + filter_taste_pref + 'OR' + filter_country + ')'
+        elif filter_taste_pref != '':
+            filter = 'AND ' + filter_taste_pref
+        elif filter_country != '':
+            filter = 'AND ' + filter_country
+
+        raw_sql = 'SELECT ratings.google_place_id, AVG(ratings.rating) AS rating, MAX(users.country) AS country,\
+            ROUND(SUM(users.taste_salty), 0) AS salty, ROUND(SUM(users.taste_spicy), 0) AS spicy,\
+            ROUND(SUM(users.taste_sour), 0) AS sour, ROUND(SUM(users.taste_sweet), 0) AS sweet \
+            FROM ratings LEFT JOIN users ON ratings.user_id = users.id\
+            WHERE ratings.google_place_id IN :values ' + filter + \
+            'GROUP BY ratings.google_place_id'
+
+        query = sqlalchemy.text(raw_sql).bindparams(values=tuple(google_place_ids))
+        result = db_session.execute(query).mappings().all()
+        if not result:
+            result = dummy_ratings(req)
+            return json.dumps(result, indent=2), HTTPStatus.OK
+
+        return jsonify(RatingPrefResponseSchema(many=True).dump(result)), HTTPStatus.OK
+    except Exception as e:
+        abort(400, e)
+
+def dummy_ratings(req):
+  result = []
+  google_place_ids = req['googlePlaceIds']
+  for google_place_id in google_place_ids:
+    d = {
+        "googlePlaceId": google_place_id,
+        "rating": str(random.randrange(1.0, 5.0)),
+        "country": req['country'],
+        "tastePref": {
+            "salty": req['tastePref']['salty'],
+            "spicy": req['tastePref']['spicy'],
+            "sour": req['tastePref']['sour'],
+            "sweet": req['tastePref']['sweet']
+        }
+    }
+    result.append(d)
+
+  return result
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -27,9 +27,9 @@ class UserResponseSchema(Schema):
     id = fields.Integer()
     username = fields.String()
     country = fields.String()
-    tastePref = fields.Method("format_name", dump_only=True)
+    tastePref = fields.Method("format_preference", dump_only=True)
 
-    def format_name(self, user):
+    def format_preference(self, user):
         return {
             'salty': user.taste_salty,
             'spicy': user.taste_spicy,
@@ -51,6 +51,32 @@ class RatingResponseSchema(Schema):
         ordered = True
 
     id = fields.Integer(dump_only=True)
-    user_id = fields.String()
-    google_place_id = fields.String()
+    user_id = fields.String(data_key="userId")
+    google_place_id = fields.String(data_key="googlePlaceId")
     rating = fields.String()
+
+class RatingPrefSchema(Schema):
+    """Request schema for ratings preference."""
+
+    googlePlaceIds = fields.List(fields.String())
+    country = fields.String()
+    tastePref = fields.Nested(TastePref)
+
+class RatingPrefResponseSchema(Schema):
+    """Response schema for ratings preference."""
+
+    class Meta:
+        ordered = True
+
+    google_place_id = fields.String(data_key="googlePlaceId")
+    rating = fields.String()
+    country = fields.String()
+    tastePref = fields.Method("format_preference", dump_only=True)
+
+    def format_preference(self, table):
+        return {
+            'salty': table.salty,
+            'spicy': table.spicy,
+            'sour': table.sour,
+            'sweet': table.sweet
+        }
